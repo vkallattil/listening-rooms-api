@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type room struct {
@@ -27,11 +28,15 @@ func main() {
 
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"http://localhost:8080"},
+		AllowHeaders: []string{"Origin", "Content-Type"},
+		AllowMethods: []string{"GET", "POST", "DELETE", "PUT"},
 	}))
 
 	router.GET("/rooms", getRooms)
 	router.GET("/rooms/:id", getRoomByID)
 	router.POST("/rooms", postRoom)
+	router.DELETE("/rooms/:id", deleteRoomByID)
+	router.PUT("/rooms/:id", updateRoomByID)
 
 	if err := router.Run("localhost:8081"); err != nil {
 		log.Fatal("failed run app: ", err)
@@ -71,6 +76,43 @@ func postRoom(c *gin.Context) {
 		return
 	}
 
+	newRoom.ID = uuid.New().String()
+
 	rooms = append(rooms, newRoom)
 	c.IndentedJSON(http.StatusCreated, newRoom)
+}
+
+func deleteRoomByID(c *gin.Context) {
+	id := c.Param("id")
+
+	for index, a := range rooms {
+		if a.ID == id {
+			rooms = append(rooms[:index], rooms[index+1:]...)
+			c.IndentedJSON(http.StatusOK, gin.H{"message": "room deleted"})
+			return
+		}
+	}
+
+	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "room not found"})
+}
+
+// PUT handler for updating a room's information
+func updateRoomByID(c *gin.Context) {
+	id := c.Param("id")
+
+	var updatedRoom room
+
+	if err := c.BindJSON(&updatedRoom); err != nil {
+		return
+	}
+
+	for index, a := range rooms {
+		if a.ID == id {
+			rooms[index] = updatedRoom
+			c.IndentedJSON(http.StatusOK, updatedRoom)
+			return
+		}
+	}
+
+	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "room not found"})
 }
