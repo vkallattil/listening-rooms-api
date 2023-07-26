@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -38,8 +39,12 @@ func main() {
 	router.DELETE("/rooms/:id", deleteRoomByID)
 	router.PUT("/rooms/:id", updateRoomByID)
 
-	if err := router.Run("localhost:8081"); err != nil {
-		log.Fatal("failed run app: ", err)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8081"
+	}
+	if err := router.Run(":" + port); err != nil {
+		log.Panicf("error: %s", err)
 	}
 }
 
