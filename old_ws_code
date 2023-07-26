@@ -1,0 +1,230 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"nhooyr.io/websocket"
+)
+
+// Type definitions
+type connection struct {
+	ID            string
+	Conn          *websocket.Conn
+	CurrentRoomID string
+}
+
+type Message struct {
+	Type    string      `json:"type"`
+	Payload interface{} `json:"payload"`
+}
+
+type StringPayloadMessage struct {
+	Type    string `json:"type"`
+	Payload string `json:"payload"`
+}
+
+type NumberPayloadMessage struct {
+	Type    string `json:"type"`
+	Payload int    `json:"payload"`
+}
+
+type room struct {
+	Label       string                 `json:"label"`
+	ID          string                 `json:"id"`
+	Private     bool                   `json:"isPrivate"`
+	Connections map[string]*connection `json:"connections"`
+	SongURL     string                 `json:"songUrl"`
+}
+
+type roomLabel struct {
+	Label   string `json:"label"`
+	ID      string `json:"id"`
+	Private bool   `json:"isPrivate"`
+}
+
+// Global variables
+
+var rooms = make(map[string]*room)
+
+func main() {
+	createMockRooms()
+
+	router := gin.Default()
+
+	router.Use(cors.New(cors.Config{
+		AllowOrigins: []string{"http://localhost:8080"},
+	}))
+
+	router.GET("/rooms", getRooms)
+	router.GET("/rooms/:id", getRoomByID)
+	router.POST("/rooms", postRoom)
+
+	router.GET("/socket", func(c *gin.Context) {
+		getWebsocket(c.Writer, c.Request)
+	})
+
+	if err := router.Run("localhost:8081"); err != nil {
+		log.Fatal("failed run app: ", err)
+	}
+}
+
+func createMockRooms() {
+	id1 := uuid.New().String()
+	id2 := uuid.New().String()
+	rooms[id1] = &room{
+		Label:       "Room 1",
+		ID:          id1,
+		Private:     true,
+		Connections: make(map[string]*connection),
+		SongURL:     "https://soundcloud.com/shaggy_svare_ganj420/travis-scott-yeah-yeah-feat-young-thugbass-boosted?si=1acb85f388a64d2bb97f0b3bc971003f&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing",
+	}
+	rooms[id2] = &room{
+		Label:       "Room 2",
+		ID:          id2,
+		Private:     false,
+		Connections: make(map[string]*connection),
+		SongURL:     "https://soundcloud.com/premierhiphopdaily/toomanychances?si=00da0a6bc9354fb0a76b0197d345f813&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing",
+	}
+}
+
+func getWebsocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		OriginPatterns: []string{"localhost:8080"},
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	thisConnection := connection{
+		ID:   uuid.New().String(),
+		Conn: conn,
+	}
+	fmt.Println("New connection: ", thisConnection.ID)
+
+	defer func() {
+		conn.Close(websocket.StatusInternalError, "Connection closed")
+		delete(rooms[thisConnection.CurrentRoomID].Connections, thisConnection.ID)
+	}()
+
+	for {
+		_, message, err := conn.Read(r.Context())
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		var incomingMessage Message
+		if err := json.Unmarshal(message, &incomingMessage); err != nil {
+			fmt.Println("Error receiving message: ", err)
+			return
+		} else {
+			fmt.Printf("Received message: %s\n", incomingMessage)
+		}
+
+		if incomingMessage.Type == "SEEK" {
+			incomingMessage := NumberPayloadMessage{
+				Type:    "SEEK",
+				Payload: int(incomingMessage.Payload.(float64)),
+			}
+
+			currentRoomID := thisConnection.CurrentRoomID
+			for roomConnID, roomConn := range rooms[currentRoomID].Connections {
+				if thisConnection.ID != roomConnID {
+					message, err := json.Marshal(incomingMessage)
+					if err != nil {
+						fmt.Println("Error marshalling to JSON: ", err)
+						return
+					} else {
+						roomConn.Conn.Write(r.Context(), websocket.MessageText, message)
+					}
+				}
+			}
+		}
+
+		if incomingMessage.Type == "CHANGE_ROOM" {
+			incomingMessage := StringPayloadMessage{
+				Type:    "CHANGE_ROOM",
+				Payload: fmt.Sprintf("%v", incomingMessage.Payload),
+			}
+
+			currentRoomID := thisConnection.CurrentRoomID
+			if currentRoomID != "" {
+				delete(rooms[currentRoomID].Connections, thisConnection.ID)
+			}
+
+			thisConnection.CurrentRoomID = incomingMessage.Payload
+			rooms[thisConnection.CurrentRoomID].Connections[thisConnection.ID] = &thisConnection
+
+			fmt.Printf("Connection %s joined room %s\n", thisConnection.ID, thisConnection.CurrentRoomID)
+			fmt.Printf("Room %s has %d connections\n", thisConnection.CurrentRoomID, len(rooms[thisConnection.CurrentRoomID].Connections))
+		}
+
+		if incomingMessage.Type == "PLAYBACK" {
+			incomingMessage := StringPayloadMessage{
+				Type:    "PLAYBACK",
+				Payload: fmt.Sprintf("%v", incomingMessage.Payload),
+			}
+
+			currentRoomID := thisConnection.CurrentRoomID
+			for roomConnID, roomConn := range rooms[currentRoomID].Connections {
+				if thisConnection.ID != roomConnID {
+					message, err := json.Marshal(incomingMessage)
+					if err != nil {
+						fmt.Println("Error marshalling to JSON: ", err)
+						return
+					} else {
+						fmt.Printf("Sending message: %s\n", message)
+					}
+
+					if err := roomConn.Conn.Write(r.Context(), websocket.MessageText, message); err != nil {
+						fmt.Println(err)
+						return
+					}
+				}
+			}
+		}
+	}
+}
+
+func getRooms(c *gin.Context) {
+	var roomLabels []roomLabel
+
+	for _, room := range rooms {
+		roomLabels = append(roomLabels, roomLabel{
+			Label:   room.Label,
+			ID:      room.ID,
+			Private: room.Private,
+		})
+	}
+
+	c.IndentedJSON(http.StatusOK, roomLabels)
+}
+
+func getRoomByID(c *gin.Context) {
+	id := c.Param("id")
+
+	room, ok := rooms[id]
+	c.IndentedJSON(http.StatusOK, room)
+
+	if ok != true {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "room not found"})
+	}
+}
+
+func postRoom(c *gin.Context) {
+	var newRoom room
+
+	if err := c.BindJSON(&newRoom); err != nil {
+		return
+	}
+
+	rooms[newRoom.ID] = &newRoom
+	c.IndentedJSON(http.StatusCreated, newRoom)
+}

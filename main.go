@@ -10,9 +10,9 @@ import (
 )
 
 type room struct {
-	Label   string `json:"label"`
-	ID      string `json:"id"`
-	SongURL string `json:"songUrl"`
+	Label     string `json:"label"`
+	ID        string `json:"id"`
+	WidgetUrl string `json:"widgetUrl"`
 }
 
 type roomLabel struct {
@@ -96,7 +96,6 @@ func deleteRoomByID(c *gin.Context) {
 	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "room not found"})
 }
 
-// PUT handler for updating a room's information
 func updateRoomByID(c *gin.Context) {
 	id := c.Param("id")
 
