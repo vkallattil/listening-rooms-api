@@ -131,7 +131,7 @@ func getWebsocket(w http.ResponseWriter, r *http.Request) {
 		if incomingMessage.Type == "SEEK" {
 			incomingMessage := NumberPayloadMessage{
 				Type:    "SEEK",
-				Payload: int(incomingMessage.Payload.(float64)),
+				Payload: incomingMessage.Payload.(int),
 			}
 
 			currentRoomID := thisConnection.CurrentRoomID

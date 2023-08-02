@@ -12,4 +12,5 @@ require (
 	github.com/ugorji/go/codec v1.2.10 // indirect
 	golang.org/x/arch v0.2.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
+	nhooyr.io/websocket v1.8.7
 )
