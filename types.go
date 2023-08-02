@@ -30,7 +30,7 @@ type StringPayloadMessage struct {
 	Payload string `json:"payload"`
 }
 
-type NumberPayloadMessage struct {
+type IntegerPayloadMessage struct {
 	Type    string `json:"type"`
 	Payload int    `json:"payload"`
 }

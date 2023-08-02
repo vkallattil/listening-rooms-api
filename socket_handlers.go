@@ -56,15 +56,14 @@ func getWebsocket(w http.ResponseWriter, r *http.Request) {
 		if incomingMessage.Type == "CHANGE_ROOM" {
 			handleRoomChange(&thisSocketUser, incomingMessage)
 		}
+
+		if incomingMessage.Type == "CHAT" {
+			handleChat(&thisSocketUser, incomingMessage)
+		}
 	}
 }
 
-// func handleSeek(incomingMessage Message) {
-// 	seekMessage := NumberPayloadMessage{
-// 		Type:    "SEEK",
-// 		Payload: incomingMessage.Payload.(int),
-// 	}
-// }
+func handleChat(thisSocketUser *socketUser, incomingMessage Message) {}
 
 func handleRoomChange(thisSocketUser *socketUser, incomingMessage Message) {
 	roomChangeMessage := StringPayloadMessage{

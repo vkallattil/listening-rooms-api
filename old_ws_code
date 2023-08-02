@@ -29,7 +29,7 @@ type StringPayloadMessage struct {
 	Payload string `json:"payload"`
 }
 
-type NumberPayloadMessage struct {
+type IntegerPayloadMessage struct {
 	Type    string `json:"type"`
 	Payload int    `json:"payload"`
 }
@@ -129,7 +129,7 @@ func getWebsocket(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if incomingMessage.Type == "SEEK" {
-			incomingMessage := NumberPayloadMessage{
+			incomingMessage := IntegerPayloadMessage{
 				Type:    "SEEK",
 				Payload: incomingMessage.Payload.(int),
 			}
