@@ -14,7 +14,7 @@ func main() {
 	router := gin.Default()
 
 	router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"http://localhost:8080"},
+		AllowOrigins: []string{"https://listening-rooms-client.onrender.com", "http://localhost:8080"},
 		AllowHeaders: []string{"Origin", "Content-Type"},
 		AllowMethods: []string{"GET", "POST", "DELETE", "PUT"},
 	}))
