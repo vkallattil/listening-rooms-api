@@ -71,6 +71,34 @@ func getWebsocket(w http.ResponseWriter, r *http.Request) {
 		if incomingMessage.Type == "CHAT" {
 			handleChat(&thisSocketUser, incomingMessage, r)
 		}
+
+		if incomingMessage.Type == "PLAYBACK" {
+			handlePlayback(&thisSocketUser, incomingMessage, r)
+		}
+	}
+}
+
+func handlePlayback(thisSocketUser *socketUser, incomingMessage SocketMessage, r *http.Request) {
+	playbackMessage := StringPayloadMessage{
+		Type:    "PLAYBACK",
+		Payload: fmt.Sprintf("%v", incomingMessage.Payload),
+	}
+
+	log.Println("Playback message: ", playbackMessage.Payload)
+	playbackMessageBytes, err := json.Marshal(StringPayloadMessage{
+		Type:    "PLAYBACK",
+		Payload: playbackMessage.Payload,
+	})
+	if err != nil {
+		log.Println("Error marshalling playback message: ", err)
+		return
+	}
+
+	for _, socketUser := range rooms[thisSocketUser.CurrentRoomID].SocketUsers {
+		if err := socketUser.Conn.Write(r.Context(), websocket.MessageText, playbackMessageBytes); err != nil {
+			log.Println("Error writing playback message: ", err)
+			return
+		}
 	}
 }
 
