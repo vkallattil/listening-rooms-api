@@ -13,7 +13,7 @@ import (
 func getWebsocket(w http.ResponseWriter, r *http.Request) {
 	// Upgrade the HTTP connection to a WebSocket connection.
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		OriginPatterns: []string{"https://listening-rooms-client.onrender.com", "localhost:8080"},
+		OriginPatterns: []string{"listening-rooms-client.onrender.com", "localhost:8080"},
 	})
 	if err != nil {
 		log.Printf("WebSocket upgrade failed: %v", err)
