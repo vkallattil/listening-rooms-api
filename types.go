@@ -20,7 +20,7 @@ type socketUser struct {
 	CurrentRoomID string
 }
 
-type Message struct {
+type SocketMessage struct {
 	Type    string      `json:"type"`
 	Payload interface{} `json:"payload"`
 }
@@ -33,4 +33,16 @@ type StringPayloadMessage struct {
 type IntegerPayloadMessage struct {
 	Type    string `json:"type"`
 	Payload int    `json:"payload"`
+}
+
+type ChatMessage struct {
+	SenderID   string `json:"senderID"`
+	SenderName string `json:"senderName"`
+	Message    string `json:"message"`
+	Timestamp  string `json:"timestamp"`
+}
+
+type ChatPayloadMessage struct {
+	Type    string        `json:"type"`
+	Payload []ChatMessage `json:"payload"`
 }

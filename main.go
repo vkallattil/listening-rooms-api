@@ -9,6 +9,7 @@ import (
 )
 
 var rooms = make(map[string]*room)
+var chats = make(map[string][]ChatMessage)
 
 func main() {
 	router := gin.Default()
