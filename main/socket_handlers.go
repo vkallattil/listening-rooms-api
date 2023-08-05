@@ -96,7 +96,7 @@ func handlePlayback(thisSocketUser *socketUser, incomingMessage SocketMessage, r
 
 	for _, socketUser := range rooms[thisSocketUser.CurrentRoomID].SocketUsers {
 		if err := socketUser.Conn.Write(r.Context(), websocket.MessageText, playbackMessageBytes); err != nil {
-			log.Println("Error writing playback message: ", err)
+			log.Println("Error writing chat message: ", err)
 			return
 		}
 	}
