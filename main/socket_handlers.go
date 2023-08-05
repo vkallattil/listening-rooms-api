@@ -56,13 +56,15 @@ func getWebsocket(w http.ResponseWriter, r *http.Request) {
 		if err := json.Unmarshal(message, &incomingMessage); err != nil {
 			log.Println("Error receiving message: ", err)
 			return
-		} else {
-			log.Printf("Received message: %s\n", incomingMessage)
 		}
 
-		// if incomingMessage.Type == "SEEK" {
-		// 	handleSeek(incomingMessage)
-		// }
+		if incomingMessage.Type == "SEEK" {
+			handleSeek(&thisSocketUser, incomingMessage, r)
+		}
+
+		if incomingMessage.Type == "SKIP" {
+			handleSkip(&thisSocketUser, incomingMessage, r)
+		}
 
 		if incomingMessage.Type == "CHANGE_ROOM" {
 			handleRoomChange(&thisSocketUser, incomingMessage, r)
@@ -74,6 +76,54 @@ func getWebsocket(w http.ResponseWriter, r *http.Request) {
 
 		if incomingMessage.Type == "PLAYBACK" {
 			handlePlayback(&thisSocketUser, incomingMessage, r)
+		}
+	}
+}
+
+func handleSkip(thisSocketUser *socketUser, incomingMessage SocketMessage, r *http.Request) {
+	skipMessage := IntegerPayloadMessage{
+		Type:    "SKIP",
+		Payload: int(incomingMessage.Payload.(float64)),
+	}
+
+	log.Println("Skip message: ", skipMessage.Payload)
+	skipMessageBytes, err := json.Marshal(IntegerPayloadMessage{
+		Type:    "SKIP",
+		Payload: skipMessage.Payload,
+	})
+	if err != nil {
+		log.Println("Error marshalling skip message: ", err)
+		return
+	}
+
+	for _, socketUser := range rooms[thisSocketUser.CurrentRoomID].SocketUsers {
+		if err := socketUser.Conn.Write(r.Context(), websocket.MessageText, skipMessageBytes); err != nil {
+			log.Println("Error writing chat message: ", err)
+			return
+		}
+	}
+}
+
+func handleSeek(thisSocketUser *socketUser, incomingMessage SocketMessage, r *http.Request) {
+	seekMessage := IntegerPayloadMessage{
+		Type:    "SEEK",
+		Payload: int(incomingMessage.Payload.(float64)),
+	}
+
+	log.Println("Seek message: ", seekMessage.Payload)
+	seekMessageBytes, err := json.Marshal(IntegerPayloadMessage{
+		Type:    "SEEK",
+		Payload: seekMessage.Payload,
+	})
+	if err != nil {
+		log.Println("Error marshalling seek message: ", err)
+		return
+	}
+
+	for _, socketUser := range rooms[thisSocketUser.CurrentRoomID].SocketUsers {
+		if err := socketUser.Conn.Write(r.Context(), websocket.MessageText, seekMessageBytes); err != nil {
+			log.Println("Error writing chat message: ", err)
+			return
 		}
 	}
 }
@@ -96,7 +146,7 @@ func handlePlayback(thisSocketUser *socketUser, incomingMessage SocketMessage, r
 
 	for _, socketUser := range rooms[thisSocketUser.CurrentRoomID].SocketUsers {
 		if err := socketUser.Conn.Write(r.Context(), websocket.MessageText, playbackMessageBytes); err != nil {
-			log.Println("Error writing playback message: ", err)
+			log.Println("Error writing chat message: ", err)
 			return
 		}
 	}
@@ -139,15 +189,19 @@ func handleRoomChange(thisSocketUser *socketUser, incomingMessage SocketMessage,
 	roomID := roomChangeMessage.Payload
 
 	if roomID == "" {
-		log.Println("room id is empty")
+		log.Println("moved to index")
 		if _, ok := rooms[thisSocketUser.CurrentRoomID]; ok {
-			log.Println("room wasn't deleted, so no need to delete user from its current room")
+			log.Println("room wasn't deleted, so need to delete user from its current room")
 			if thisSocketUser.CurrentRoomID != "" {
 				delete(rooms[thisSocketUser.CurrentRoomID].SocketUsers, thisSocketUser.ID)
 			}
 		}
 		thisSocketUser.CurrentRoomID = roomChangeMessage.Payload
 		return
+	}
+
+	if thisSocketUser.CurrentRoomID != "" {
+		delete(rooms[thisSocketUser.CurrentRoomID].SocketUsers, thisSocketUser.ID)
 	}
 
 	rooms[roomID].SocketUsers[thisSocketUser.ID] = thisSocketUser
