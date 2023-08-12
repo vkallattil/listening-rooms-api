@@ -98,7 +98,7 @@ func handleSkip(thisSocketUser *socketUser, incomingMessage SocketMessage, r *ht
 
 	for _, socketUser := range rooms[thisSocketUser.CurrentRoomID].SocketUsers {
 		if err := socketUser.Conn.Write(r.Context(), websocket.MessageText, skipMessageBytes); err != nil {
-			log.Println("Error writing chat message: ", err)
+			log.Println("Error writing skip message: ", err)
 			return
 		}
 	}
@@ -122,7 +122,7 @@ func handleSeek(thisSocketUser *socketUser, incomingMessage SocketMessage, r *ht
 
 	for _, socketUser := range rooms[thisSocketUser.CurrentRoomID].SocketUsers {
 		if err := socketUser.Conn.Write(r.Context(), websocket.MessageText, seekMessageBytes); err != nil {
-			log.Println("Error writing chat message: ", err)
+			log.Println("Error writing seek message: ", err)
 			return
 		}
 	}
@@ -146,7 +146,7 @@ func handlePlayback(thisSocketUser *socketUser, incomingMessage SocketMessage, r
 
 	for _, socketUser := range rooms[thisSocketUser.CurrentRoomID].SocketUsers {
 		if err := socketUser.Conn.Write(r.Context(), websocket.MessageText, playbackMessageBytes); err != nil {
-			log.Println("Error writing chat message: ", err)
+			log.Println("Error writing playback message: ", err)
 			return
 		}
 	}
